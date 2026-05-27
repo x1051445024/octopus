@@ -352,6 +352,7 @@ export function ChannelForm({
                             <SelectItem className='rounded-xl' value={String(ChannelType.Anthropic)}>{t('typeAnthropic')}</SelectItem>
                             <SelectItem className='rounded-xl' value={String(ChannelType.Gemini)}>{t('typeGemini')}</SelectItem>
                             <SelectItem className='rounded-xl' value={String(ChannelType.Volcengine)}>{t('typeVolcengine')}</SelectItem>
+                            <SelectItem className='rounded-xl' value={String(ChannelType.MiMoChat)}>{t('typeMiMoChat')}</SelectItem>
                             <SelectItem className='rounded-xl' value={String(ChannelType.OpenAIEmbedding)}>{t('typeOpenAIEmbedding')}</SelectItem>
                         </SelectContent>
                     </Select>
@@ -775,3 +776,4 @@ export function ChannelForm({
         </form>
     );
 }
+

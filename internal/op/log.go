@@ -3,10 +3,14 @@ package op
 import (
 	"context"
 	"crypto/rand"
-	"encoding/hex"
+    "encoding/hex"
+    "encoding/json"
 	"errors"
 	"sync"
+    "strings"
 	"time"
+	transformerModel "github.com/lingyuins/octopus/internal/transformer/model"
+	"github.com/lingyuins/octopus/internal/transformer/outbound"
 
 	"github.com/lingyuins/octopus/internal/db"
 	"github.com/lingyuins/octopus/internal/model"
@@ -227,83 +231,87 @@ func relayLogCleanup(ctx context.Context) error {
 // startTime 和 endTime 为 nil 时表示不限制时间范围
 // 返回轻量条目，不包含 request_content 和 response_content 大字段
 func RelayLogList(ctx context.Context, startTime, endTime *int, page, pageSize int) ([]model.RelayLogListItem, error) {
-	enabled, err := SettingGetBool(model.SettingKeyRelayLogKeepEnabled)
-	if err != nil {
-		return nil, err
-	}
-	hasTimeFilter := startTime != nil || endTime != nil
+    enabled, err := SettingGetBool(model.SettingKeyRelayLogKeepEnabled)
+    if err != nil {
+        return nil, err
+    }
+    hasTimeFilter := startTime != nil || endTime != nil
 
-	matchesTime := func(log model.RelayLog) bool {
-		if startTime != nil && log.Time < int64(*startTime) {
-			return false
-		}
-		if endTime != nil && log.Time > int64(*endTime) {
-			return false
-		}
-		return true
-	}
+    matchesTime := func(log model.RelayLog) bool {
+        if startTime != nil && log.Time < int64(*startTime) {
+            return false
+        }
+        if endTime != nil && log.Time > int64(*endTime) {
+            return false
+        }
+        return true
+    }
 
-	// 获取缓存中符合条件的日志（保持原始顺序：旧 -> 新）
-	relayLogCacheLock.Lock()
-	var cachedLogs []model.RelayLog
-	for _, log := range relayLogCache {
-		if hasTimeFilter && !matchesTime(log) {
-			continue
-		}
-		cachedLogs = append(cachedLogs, log)
-	}
-	relayLogCacheLock.Unlock()
+    relayLogCacheLock.Lock()
+    var cachedLogs []model.RelayLog
+    for _, log := range relayLogCache {
+        if hasTimeFilter && !matchesTime(log) {
+            continue
+        }
+        cachedLogs = append(cachedLogs, log)
+    }
+    relayLogCacheLock.Unlock()
 
-	cacheCount := len(cachedLogs)
-	offset := (page - 1) * pageSize
+    cacheCount := len(cachedLogs)
+    offset := (page - 1) * pageSize
 
-	var result []model.RelayLogListItem
+    var result []model.RelayLogListItem
+    if offset < cacheCount {
+        cacheTake := min(pageSize, cacheCount-offset)
+        start := cacheCount - offset - 1
+        for i := 0; i < cacheTake; i++ {
+            idx := start - i
+            if idx < 0 {
+                break
+            }
+            item := cachedLogs[idx].ToListItem()
+            if channel, getErr := ChannelGet(item.ChannelId, ctx); getErr == nil {
+                fillRelayLogListItemRequestTypeLabel(&item, channel.Type, cachedLogs[idx].RequestContent)
+            }
+            result = append(result, item)
+        }
+    }
 
-	// 先从缓存中按"新 -> 旧"顺序分页提取，不再整段 reverse。
-	if offset < cacheCount {
-		cacheTake := min(pageSize, cacheCount-offset)
-		start := cacheCount - offset - 1
-		for i := 0; i < cacheTake; i++ {
-			idx := start - i
-			if idx < 0 {
-				break
-			}
-			result = append(result, cachedLogs[idx].ToListItem())
-		}
-	}
+    if enabled {
+        remaining := pageSize - len(result)
+        if remaining > 0 {
+            dbOffset := 0
+            if offset > cacheCount {
+                dbOffset = offset - cacheCount
+            }
+            query := db.GetDB().WithContext(ctx).
+                Select("id", "time", "request_model_name", "request_api_key_name",
+                    "channel_id", "channel_name", "actual_model_name",
+                    "input_tokens", "output_tokens", "ftut", "use_time",
+                    "cost", "error", "attempts", "total_attempts", "request_content")
+            if startTime != nil {
+                query = query.Where("time >= ?", *startTime)
+            }
+            if endTime != nil {
+                query = query.Where("time <= ?", *endTime)
+            }
 
-	// 如果启用了日志保存，缓存不够时从数据库补充
-	if enabled {
-		remaining := pageSize - len(result)
-		if remaining > 0 {
-			dbOffset := 0
-			if offset > cacheCount {
-				dbOffset = offset - cacheCount
-			}
+            var dbLogs []model.RelayLog
+            if err := query.Order("id DESC").Offset(dbOffset).Limit(remaining).Find(&dbLogs).Error; err != nil {
+                return nil, err
+            }
+            for i := range dbLogs {
+                item := dbLogs[i].ToListItem()
+                if channel, getErr := ChannelGet(item.ChannelId, ctx); getErr == nil {
+                    fillRelayLogListItemRequestTypeLabel(&item, channel.Type, dbLogs[i].RequestContent)
+                }
+                result = append(result, item)
+            }
+        }
+    }
 
-			query := db.GetDB().WithContext(ctx).
-				Select("id", "time", "request_model_name", "request_api_key_name",
-					"channel_id", "channel_name", "actual_model_name",
-					"input_tokens", "output_tokens", "ftut", "use_time",
-					"cost", "error", "attempts", "total_attempts")
-			if startTime != nil {
-				query = query.Where("time >= ?", *startTime)
-			}
-			if endTime != nil {
-				query = query.Where("time <= ?", *endTime)
-			}
-
-			var dbLogs []model.RelayLogListItem
-			if err := query.Order("id DESC").Offset(dbOffset).Limit(remaining).Find(&dbLogs).Error; err != nil {
-				return nil, err
-			}
-			result = append(result, dbLogs...)
-		}
-	}
-
-	return result, nil
+    return result, nil
 }
-
 func RelayLogClear(ctx context.Context) error {
 	relayLogCacheLock.Lock()
 	relayLogCache = make([]model.RelayLog, 0, relayLogMaxSize)
@@ -313,21 +321,83 @@ func RelayLogClear(ctx context.Context) error {
 
 // RelayLogGetByID 根据ID获取完整日志详情（包含 request_content 和 response_content）
 func RelayLogGetByID(ctx context.Context, id int64) (*model.RelayLog, error) {
-	var relayLog model.RelayLog
-	if err := db.GetDB().WithContext(ctx).Where("id = ?", id).First(&relayLog).Error; err != nil {
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, err
-		}
+    var relayLog model.RelayLog
+    if err := db.GetDB().WithContext(ctx).Where("id = ?", id).First(&relayLog).Error; err != nil {
+        if !errors.Is(err, gorm.ErrRecordNotFound) {
+            return nil, err
+        }
 
-		relayLogCacheLock.Lock()
-		defer relayLogCacheLock.Unlock()
-		for i := range relayLogCache {
-			if relayLogCache[i].ID == id {
-				cached := relayLogCache[i]
-				return &cached, nil
-			}
-		}
-		return nil, nil
-	}
-	return &relayLog, nil
+        relayLogCacheLock.Lock()
+        defer relayLogCacheLock.Unlock()
+        for i := range relayLogCache {
+            if relayLogCache[i].ID == id {
+                cached := relayLogCache[i]
+                if channel, getErr := ChannelGet(cached.ChannelId, ctx); getErr == nil {
+                    fillRelayLogRequestTypeLabel(&cached, channel.Type)
+                }
+                return &cached, nil
+            }
+        }
+        return nil, nil
+    }
+    if channel, getErr := ChannelGet(relayLog.ChannelId, ctx); getErr == nil {
+        fillRelayLogRequestTypeLabel(&relayLog, channel.Type)
+    }
+    return &relayLog, nil
+}
+
+func detectRelayLogRequestTypeLabel(channelType outbound.OutboundType, requestContent string) string {
+    switch channelType {
+    case outbound.OutboundTypeMiMoChat:
+        return "MiMo Chat"
+    case outbound.OutboundTypeOpenAIResponse:
+        return "Responses"
+    case outbound.OutboundTypeOpenAIEmbedding:
+        return "Embedding"
+    case outbound.OutboundTypeAnthropic:
+        return "Anthropic Messages"
+    case outbound.OutboundTypeGemini:
+        return "Gemini"
+    case outbound.OutboundTypeVolcengine:
+        return "Volcengine"
+    }
+
+    if strings.TrimSpace(requestContent) == "" {
+        if channelType == outbound.OutboundTypeOpenAIChat {
+            return "对话"
+        }
+        return "未知"
+    }
+
+    var req transformerModel.InternalLLMRequest
+    if err := json.Unmarshal([]byte(requestContent), &req); err == nil {
+        if req.Stream != nil && *req.Stream {
+            return "流式对话"
+        }
+        if req.RawAPIFormat == transformerModel.APIFormatOpenAIEmbedding || req.EmbeddingInput != nil {
+            return "Embedding"
+        }
+        if req.RawAPIFormat == transformerModel.APIFormatOpenAIResponse {
+            return "Responses"
+        }
+    }
+
+    if channelType == outbound.OutboundTypeOpenAIChat {
+        return "对话"
+    }
+    return "未知"
+}
+
+func fillRelayLogRequestTypeLabel(logItem *model.RelayLog, channelType outbound.OutboundType) {
+    if logItem == nil {
+        return
+    }
+    logItem.RequestTypeLabel = detectRelayLogRequestTypeLabel(channelType, logItem.RequestContent)
+}
+
+func fillRelayLogListItemRequestTypeLabel(logItem *model.RelayLogListItem, channelType outbound.OutboundType, requestContent string) {
+    if logItem == nil {
+        return
+    }
+    logItem.RequestTypeLabel = detectRelayLogRequestTypeLabel(channelType, requestContent)
 }

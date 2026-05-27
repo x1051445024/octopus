@@ -98,6 +98,7 @@ func performOpenAICompatibleConnectivityRequest(ctx context.Context, client *htt
 		return 0, "", err
 	}
 	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("api-key", apiKey)
 	for _, header := range request.CustomHeader {
 		if strings.TrimSpace(header.HeaderKey) != "" {
 			req.Header.Set(header.HeaderKey, header.HeaderValue)
@@ -149,3 +150,5 @@ func maskSecret(secret string) string {
 	}
 	return trimmed[:4] + "..." + trimmed[len(trimmed)-4:]
 }
+
+

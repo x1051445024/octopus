@@ -45,6 +45,7 @@ func (o *ResponseOutbound) TransformRequest(ctx context.Context, request *model.
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "Bearer "+key)
+	req.Header.Set("api-key", key)
 
 	// Parse and set URL
 	parsedUrl, err := url.Parse(strings.TrimSuffix(baseUrl, "/"))
@@ -849,3 +850,5 @@ func convertResponsesUsage(usage *ResponsesUsage) *model.Usage {
 
 	return result
 }
+
+

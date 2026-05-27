@@ -41,6 +41,7 @@ type RelayLog struct {
 	Error             string           `json:"error" gorm:"column:error"`                                    // 错误信息
 	Attempts          []ChannelAttempt `json:"attempts" gorm:"column:attempts;serializer:json"`          // 所有尝试记录
 	TotalAttempts     int              `json:"total_attempts" gorm:"column:total_attempts"`                           // 总尝试次数
+    RequestTypeLabel  string           `json:"request_type_label,omitempty" gorm:"-"`
 }
 
 // RelayLogListItem 日志列表轻量条目，排除了 RequestContent 和 ResponseContent 大字段
@@ -60,6 +61,7 @@ type RelayLogListItem struct {
 	Error             string           `json:"error" gorm:"column:error"`
 	Attempts          []ChannelAttempt `json:"attempts" gorm:"column:attempts;serializer:json"`
 	TotalAttempts     int              `json:"total_attempts" gorm:"column:total_attempts"`
+    RequestTypeLabel  string           `json:"request_type_label,omitempty" gorm:"-"`
 }
 
 // TableName explicitly returns "-" for DTO structs to prevent GORM auto-mapping.
@@ -86,5 +88,7 @@ func (r *RelayLog) ToListItem() RelayLogListItem {
 		Error:             r.Error,
 		Attempts:          r.Attempts,
 		TotalAttempts:     r.TotalAttempts,
+        RequestTypeLabel:  r.RequestTypeLabel,
 	}
 }
+

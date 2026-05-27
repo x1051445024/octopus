@@ -472,21 +472,21 @@ func (ra *relayAttempt) handleForwardResponse(response *http.Response) (int, err
 	return response.StatusCode, fmt.Errorf("upstream error: %d: %s", response.StatusCode, string(body))
 }
 
-// copyHeaders 复制请求头，过滤 hop-by-hop 头
 func (ra *relayAttempt) copyHeaders(outboundRequest *http.Request) {
-	for key, values := range ra.c.Request.Header {
-		if hopByHopHeaders[strings.ToLower(key)] {
-			continue
-		}
-		for _, value := range values {
-			outboundRequest.Header.Set(key, value)
-		}
-	}
-	if len(ra.channel.CustomHeader) > 0 {
-		for _, header := range ra.channel.CustomHeader {
-			outboundRequest.Header.Set(header.HeaderKey, header.HeaderValue)
-		}
-	}
+    for key, values := range ra.c.Request.Header {
+        lowerKey := strings.ToLower(key)
+        if hopByHopHeaders[lowerKey] || !forwardRequestHeaders[lowerKey] {
+            continue
+        }
+        for _, value := range values {
+            outboundRequest.Header.Add(key, value)
+        }
+    }
+    if len(ra.channel.CustomHeader) > 0 {
+        for _, header := range ra.channel.CustomHeader {
+            outboundRequest.Header.Set(header.HeaderKey, header.HeaderValue)
+        }
+    }
 }
 
 // sendRequest 发送 HTTP 请求
@@ -656,3 +656,4 @@ func (ra *relayAttempt) collectResponse() {
 
 	ra.metrics.SetInternalResponse(internalResponse, ra.internalRequest.Model)
 }
+

@@ -326,6 +326,7 @@ func forwardMediaRequestJSON(
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+key)
+	req.Header.Set("api-key", key)
 
 	// Apply channel custom headers
 	applyChannelHeaders(req, channel)
@@ -422,6 +423,7 @@ func forwardMediaRequestMultipart(
 
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	req.Header.Set("Authorization", "Bearer "+key)
+	req.Header.Set("api-key", key)
 
 	// Apply channel custom headers
 	applyChannelHeaders(req, channel)
@@ -510,3 +512,5 @@ func handleJSONResponse(c *gin.Context, response *http.Response) (int, error) {
 
 	return response.StatusCode, nil
 }
+
+

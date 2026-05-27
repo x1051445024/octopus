@@ -44,6 +44,7 @@ export interface RelayLog {
     error: string;               // 错误信息
     attempts?: ChannelAttempt[]; // 所有尝试记录
     total_attempts?: number;     // 总尝试次数
+    request_type_label?: string; // 请求类型展示
 }
 
 /**
@@ -353,3 +354,5 @@ export function useLogDetail() {
 
     return { detail, isLoading, fetchDetail, reset };
 }
+
+

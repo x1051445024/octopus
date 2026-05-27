@@ -449,6 +449,9 @@ func (s *Stop) UnmarshalJSON(data []byte) error {
 
 // Message represents a message in the conversation.
 type Message struct {
+	Annotations []Annotation `json:"annotations,omitempty"`
+	ErrorMessage string `json:"error_message,omitempty"`
+	FinalTextPreview string `json:"final_text_preview,omitempty"`
 	Role string `json:"role,omitempty"`
 	// Content of the message.
 	// string or []ContentPart, be careful about the omitzero tag, it required.
@@ -529,15 +532,15 @@ type MessageContent struct {
 }
 
 func (c MessageContent) MarshalJSON() ([]byte, error) {
-	if len(c.MultipleContent) > 0 {
-		if len(c.MultipleContent) == 1 && c.MultipleContent[0].Type == "text" {
-			return json.Marshal(c.MultipleContent[0].Text)
-		}
+    if len(c.MultipleContent) > 0 {
+        if len(c.MultipleContent) == 1 && c.MultipleContent[0].Type == "text" {
+            return json.Marshal(c.MultipleContent[0].Text)
+        }
 
-		return json.Marshal(c.MultipleContent)
-	}
+        return json.Marshal(c.MultipleContent)
+    }
 
-	return json.Marshal(c.Content)
+    return json.Marshal(c.Content)
 }
 
 func (c *MessageContent) UnmarshalJSON(data []byte) error {
@@ -730,6 +733,21 @@ type TopLogprob struct {
 	Bytes   []int   `json:"bytes,omitempty"`
 }
 
+
+type Annotation struct {
+	Type        string `json:"type,omitempty"`
+	URL         string `json:"url,omitempty"`
+	Title       string `json:"title,omitempty"`
+	Summary     string `json:"summary,omitempty"`
+	SiteName    string `json:"site_name,omitempty"`
+	PublishTime string `json:"publish_time,omitempty"`
+	LogoURL     string `json:"logo_url,omitempty"`
+}
+
+type WebSearchUsage struct {
+	ToolUsage int64 `json:"tool_usage"`
+	PageUsage int64 `json:"page_usage"`
+}
 type ResponseMeta struct {
 	ID    string `json:"id"`
 	Usage *Usage `json:"usage"`
@@ -743,6 +761,7 @@ type Usage struct {
 	TotalTokens             int64                    `json:"total_tokens"`
 	PromptTokensDetails     *PromptTokensDetails     `json:"prompt_tokens_details"`
 	CompletionTokensDetails *CompletionTokensDetails `json:"completion_tokens_details"`
+	WebSearchUsage         *WebSearchUsage         `json:"web_search_usage,omitempty"`
 
 	// Output only. A detailed breakdown of the token count for each modality in the prompt.
 	PromptModalityTokenDetails []ModalityTokenCount `json:"-"`
@@ -781,6 +800,8 @@ type CompletionTokensDetails struct {
 type PromptTokensDetails struct {
 	AudioTokens  int64 `json:"audio_tokens"`
 	CachedTokens int64 `json:"cached_tokens"`
+	ImageTokens  int64 `json:"image_tokens"`
+	VideoTokens  int64 `json:"video_tokens"`
 }
 
 // ResponseError represents an error response.
@@ -1065,3 +1086,4 @@ func (e *Embedding) UnmarshalJSON(data []byte) error {
 
 	return errors.New("invalid embedding type")
 }
+

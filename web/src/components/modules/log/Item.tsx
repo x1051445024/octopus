@@ -289,7 +289,12 @@ export function LogCard({ log }: { log: RelayLog }) {
                         <MorphingDialogClose className="top-4 right-5 text-muted-foreground hover:text-foreground transition-colors" />
                         <MorphingDialogTitle className="flex items-center gap-2 mb-3 text-sm">
                             <ModelAvatar size={28} />
-                            <span className="font-semibold text-card-foreground">{log.request_model_name}</span>
+                            <div className="flex items-center gap-2">
+                                <span className="font-semibold text-card-foreground">{log.request_model_name}</span>
+                                {log.request_type_label && (
+                                    <Badge variant="outline" className="shrink-0 rounded-full text-[10px] px-2 py-0 h-5">{log.request_type_label}</Badge>
+                                )}
+                            </div>
                             <ArrowRight className="size-3.5 text-muted-foreground/50" />
                             {hasMultipleAttempts ? (
                                 <RetryBadgeWithTooltip
@@ -502,3 +507,5 @@ export function LogCard({ log }: { log: RelayLog }) {
         </TooltipProvider>
     );
 }
+
+

@@ -4,6 +4,7 @@ import (
 	"github.com/lingyuins/octopus/internal/transformer/model"
 	"github.com/lingyuins/octopus/internal/transformer/outbound/authropic"
 	"github.com/lingyuins/octopus/internal/transformer/outbound/gemini"
+	"github.com/lingyuins/octopus/internal/transformer/outbound/mimo"
 	"github.com/lingyuins/octopus/internal/transformer/outbound/openai"
 	"github.com/lingyuins/octopus/internal/transformer/outbound/volcengine"
 )
@@ -16,6 +17,7 @@ const (
 	OutboundTypeAnthropic
 	OutboundTypeGemini
 	OutboundTypeVolcengine
+	OutboundTypeMiMoChat
 	OutboundTypeOpenAIEmbedding
 )
 
@@ -31,6 +33,7 @@ var ChatChannelTypes = map[OutboundType]bool{
 	OutboundTypeAnthropic:      true,
 	OutboundTypeGemini:         true,
 	OutboundTypeVolcengine:     true,
+	OutboundTypeMiMoChat:       true,
 }
 
 // IsEmbeddingChannelType 判断 channel 类型是否支持 embedding 请求
@@ -50,6 +53,7 @@ var outboundFactories = map[OutboundType]func() model.Outbound{
 	OutboundTypeAnthropic:       func() model.Outbound { return &authropic.MessageOutbound{} },
 	OutboundTypeGemini:          func() model.Outbound { return &gemini.MessagesOutbound{} },
 	OutboundTypeVolcengine:      func() model.Outbound { return &volcengine.ResponseOutbound{} },
+	OutboundTypeMiMoChat:        func() model.Outbound { return &mimo.ChatOutbound{} },
 }
 
 func Get(outboundType OutboundType) model.Outbound {

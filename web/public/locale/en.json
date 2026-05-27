@@ -685,6 +685,7 @@
             "typeAnthropic": "Anthropic",
             "typeGemini": "Gemini",
             "typeVolcengine": "Volcengine",
+            "typeMiMoChat": "MiMo Chat",
             "autoSync": "Auto Sync",
             "autoGroup": "Auto Group",
             "autoGroupNone": "None",
@@ -697,3 +698,4 @@
         }
     }
 }
+

@@ -87,6 +87,20 @@ var hopByHopHeaders = map[string]bool{
 	"x-cluster-client-ip": true,
 }
 
+// forwardRequestHeaders 定义允许透传到上游的入站请求头。
+// 仅保留与请求语义直接相关、且不会干扰上游鉴权/协议解析的头部。
+var forwardRequestHeaders = map[string]bool{
+    "accept":              true,
+    "accept-language":     true,
+    "content-type":        true,
+    "openai-organization": true,
+    "openai-project":      true,
+    "anthropic-version":   true,
+    "anthropic-beta":      true,
+    "x-request-id":        true,
+    "idempotency-key":     true,
+}
+
 type relayRequest struct {
 	c               *gin.Context
 	inAdapter       model.Inbound
@@ -361,3 +375,5 @@ func isNetworkError(err error) bool {
 		strings.Contains(errStr, "DNS") ||
 		strings.Contains(errStr, "failed to send request")
 }
+
+

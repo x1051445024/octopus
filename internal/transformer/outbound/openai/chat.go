@@ -46,6 +46,7 @@ func (o *ChatOutbound) TransformRequest(ctx context.Context, request *model.Inte
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "Bearer "+key)
+	req.Header.Set("api-key", key)
 
 	parsedUrl, err := url.Parse(strings.TrimSuffix(baseUrl, "/"))
 	if err != nil {
@@ -96,3 +97,5 @@ func (o *ChatOutbound) TransformStream(ctx context.Context, eventData []byte) (*
 	}
 	return &resp, nil
 }
+
+

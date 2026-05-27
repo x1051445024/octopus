@@ -147,6 +147,23 @@ export const channelTemplates: ChannelTemplate[] = [
         }),
     },
     {
+        key: 'mimo',
+        name: 'MiMo Chat',
+        description: 'Xiaomi MiMo OpenAI 兼容对话接口',
+        apply: (current) => createTemplatePatch(current, {
+            name: current.name || 'MiMo Chat',
+            type: ChannelType.MiMoChat,
+            base_urls: [{ url: 'https://api.xiaomimimo.com/v1', delay: 0 }],
+            custom_header: [],
+            channel_proxy: '',
+            param_override: '',
+            model: '',
+            custom_model: '',
+            auto_group: AutoGroupType.None,
+            match_regex: '',
+        }),
+    },
+    {
         key: 'volcengine',
         name: 'Volcengine',
         description: '火山引擎 Ark 接口',
@@ -164,3 +181,5 @@ export const channelTemplates: ChannelTemplate[] = [
         }),
     },
 ];
+
+

@@ -57,6 +57,7 @@ func fetchOpenAIModels(client *http.Client, ctx context.Context, request model.C
 		nil,
 	)
 	req.Header.Set("Authorization", "Bearer "+request.GetChannelKey().ChannelKey)
+	req.Header.Set("api-key", request.GetChannelKey().ChannelKey)
 	for _, header := range request.CustomHeader {
 		if header.HeaderKey != "" {
 			req.Header.Set(header.HeaderKey, header.HeaderValue)
@@ -189,3 +190,5 @@ func fetchAnthropicModels(client *http.Client, ctx context.Context, request mode
 	}
 	return allModels, nil
 }
+
+
